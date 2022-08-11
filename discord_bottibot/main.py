@@ -7,7 +7,7 @@ import botticommand
 def setup(ctx):
     token = getenv("BOT_TOKEN")
     if token is None:
-        raise TypeError("BOT token is required")
+        raise KeyError("BOT_TOKEN not exist. BOT token is required")
     ctx.set_token(token)
 
 
