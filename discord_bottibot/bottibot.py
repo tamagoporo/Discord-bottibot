@@ -7,15 +7,15 @@ import traceback
 client = discord.Client()
 
 
-async def reply(message):
-    reply = f"{message.author.mention} ぼっちでかわいそう？それ誉め言葉ね。"
-    await message.channel.send(reply) # 返信メッセージを送信
-
-
 # 起動時
 @client.event
 async def on_ready():
     print("ログインしたあ")
+
+
+async def reply(message):
+    reply = f"{message.author.mention} ぼっちでかわいそう？それ誉め言葉ね。"
+    await message.channel.send(reply) # 返信メッセージを送信
 
 
 # メッセージ受信時
@@ -23,7 +23,7 @@ async def on_ready():
 async def on_message(message):
     if message.author.bot:
         return
-    if client.user in message.mentions: # 話しかけられたかの判定
+    if client.user in message.mentions: # botに対してメンションを付けられたかの判定
         print("はなしかけられたー")
         await reply(message) # 返信する非同期関数を実行
 
