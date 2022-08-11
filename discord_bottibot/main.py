@@ -1,7 +1,6 @@
 from os import getenv
 import context
 import bottibot
-import botticommand
 
 
 def setup(ctx):
@@ -15,4 +14,3 @@ if __name__ == "__main__":
     ctx = context.Context()
     setup(ctx)
     bottibot.setup(ctx)
-    botticommand.setup(ctx)
