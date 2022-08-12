@@ -1,8 +1,7 @@
 import discord
 import asyncio
 import traceback
-
-
+from enum import Enum
 
 client = discord.Client()
 
@@ -13,44 +12,58 @@ async def on_ready():
     print("ログインしたあ")
 
 
-async def reply(message):
-    reply = f"{message.author.mention} ぼっちでかわいそう？それ誉め言葉ね。"
-    await message.channel.send(reply) # 返信メッセージを送信
-
-
 # メッセージ受信時
 @client.event
 async def on_message(message):
     if message.author.bot:
         return
     if client.user in message.mentions: # botに対してメンションを付けられたかの判定
-        print("はなしかけられたー")
-        await reply(message) # 返信する非同期関数を実行
+        msg = f"{message.author.mention} ぼっちでかわいそう？それ誉め言葉ね。"
+        await message.channel.send(msg) # 返信メッセージを送信
 
 
 # リアクション追加時に実行されるイベントハンドラ
 @client.event
 async def on_reaction_add(reaction, user):
-    print("リアクションつけられたー")
-    channel = client.get_channel(TEST_CHANNEL_ID)
-    await channel.send('👍')
+    msg = f"{user.mention} 🤔"
+    await reaction.message.channel.send(msg)
 
 
-# @client.event
-# async def on_message(message):
-#     if message.content.startswith('$thumb'):
-#         channel = message.channel
-#         await channel.send('Send me that 👍 reaction, mate')
+@client.event
+async def on_voice_state_update(member, before, after):
+    class State(Enum):
+        JOIN = 0
+        LEAVE = 1
+        MOVE = 2
+        OTHER = 3
 
-#         def check(reaction, user):
-#             return user == message.author and str(reaction.emoji) == '👍'
+    if not before.channel and after.channel:
+        state = State.JOIN
+    elif before.channel and not after.channel:
+        state = State.LEAVE
+    elif before.channel != after.channel:
+        state = State.MOVE
+    else:   
+        state = State.OTHER
+    print(before)
+    print(after)
+    print(member)
+    print(state)
 
-#         try:
-#             reaction, user = await client.wait_for('reaction_add', timeout=2.0, check=check)
-#         except asyncio.TimeoutError:
-#             await channel.send('👎')
-#         else:
-#             await channel.send('👍')
+
+    BOT_NOTIFY_CH_NAME = "bot_notify"
+    if state is State.JOIN or state is State.MOVE:
+        if len(after.channel.members) == 1:
+            voice_channel_cate = after.channel.category
+            notify_channels = list(filter(lambda ele: ele.name == BOT_NOTIFY_CH_NAME ,voice_channel_cate.channels))
+            if len(notify_channels) == 0:
+                print(f"{BOT_NOTIFY_CH_NAME}がなかったからつくるよ")
+                notify_channel = await voice_channel_cate.create_text_channel(BOT_NOTIFY_CH_NAME)
+            else :
+                print(f"{BOT_NOTIFY_CH_NAME}がすでにあったよ")
+                notify_channel = notify_channels[0]
+            msg = f"{notify_channel.mention} {member.name}が{voice_channel_cate.name}の{after.channel.name}で話したがってるよ"
+            await notify_channel.send(msg)
 
 
 def setup(ctx):

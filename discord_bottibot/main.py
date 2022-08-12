@@ -4,9 +4,11 @@ import bottibot
 
 
 def setup(ctx):
-    token = getenv("BOT_TOKEN")
+    BOT_TOKEN_KEY = "BOT_TOKEN"
+
+    token = getenv(BOT_TOKEN_KEY)
     if token is None:
-        raise KeyError("BOT_TOKEN not exist. BOT token is required")
+        raise KeyError(f"{BOT_TOKEN} not defined.")
     ctx.set_token(token)
 
 
