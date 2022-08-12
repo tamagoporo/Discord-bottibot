@@ -9,7 +9,7 @@ client = discord.Client()
 # 起動時
 @client.event
 async def on_ready():
-    print("ログインしたあ")
+    print("じゅんびかんりょー")
 
 
 # メッセージ受信時
@@ -29,6 +29,7 @@ async def on_reaction_add(reaction, user):
     await reaction.message.channel.send(msg)
 
 
+# ボイスステートが更新されたときに実行されるイベントハンドラ
 @client.event
 async def on_voice_state_update(member, before, after):
     class State(Enum):
@@ -53,17 +54,26 @@ async def on_voice_state_update(member, before, after):
 
     BOT_NOTIFY_CH_NAME = "bot_notify"
     if state is State.JOIN or state is State.MOVE:
+        voice_channel_cate = after.channel.category
+        notify_channels = list(filter(lambda ele: ele.name == BOT_NOTIFY_CH_NAME ,voice_channel_cate.channels))
+        if len(notify_channels) == 0:
+            print(f"{BOT_NOTIFY_CH_NAME}がなかったからつくるよ")
+            notify_channel = await voice_channel_cate.create_text_channel(BOT_NOTIFY_CH_NAME)
+        else :
+            print(f"{BOT_NOTIFY_CH_NAME}がすでにあったよ")
+            notify_channel = notify_channels[0]
         if len(after.channel.members) == 1:
-            voice_channel_cate = after.channel.category
-            notify_channels = list(filter(lambda ele: ele.name == BOT_NOTIFY_CH_NAME ,voice_channel_cate.channels))
-            if len(notify_channels) == 0:
-                print(f"{BOT_NOTIFY_CH_NAME}がなかったからつくるよ")
-                notify_channel = await voice_channel_cate.create_text_channel(BOT_NOTIFY_CH_NAME)
-            else :
-                print(f"{BOT_NOTIFY_CH_NAME}がすでにあったよ")
-                notify_channel = notify_channels[0]
-            msg = f"{notify_channel.mention} {member.name}が{voice_channel_cate.name}の{after.channel.name}で話したがってるよ"
-            await notify_channel.send(msg)
+            embed = discord.Embed(
+                color=0x0000ff, 
+                description=f"{member.name}がボイスチャットで話したがってるよ",
+                )
+            await notify_channel.send(embed=embed)
+        else:
+            embed = discord.Embed(
+                color=0x00ff00, 
+                description=f"{member.name}がボイスチャットに参加したよ",
+                )
+            await notify_channel.send(embed=embed)
 
 
 def setup(ctx):
