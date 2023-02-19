@@ -24,7 +24,7 @@ $ sudo pip3 install discord.py
 
 * python,gitのお勉強用のプロジェクト。
 * できるだけ便利なぼっとを作りたい。
-* 最終的には[Heroku](https://jp.heroku.com/)のFreeプランで24時間365日稼働させるのが目標。
+* 最終的にはPaasの無料プランで24時間365日稼働させるのが目標。
 
 参考サイト
 
