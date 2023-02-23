@@ -38,16 +38,15 @@ class BottiBot(discord.Client):
         author = message.author
         content = message.content
         embeds = message.embeds
-        embeds_desc = [embed.description for embed in message.embeds]
         log_i(f"user:{author} comments:{content} embeds:{','.join([embed.description for embed in embeds])}")
         if author.bot:
             return
         command = content.split(' ')[0]
         command_prefix = "!"
-        if content.startswith(f"{command_prefix}chat"):
+        if command == f"{command_prefix}chat":
             await self.command_chat(message)
             return
-        if content.startswith(f"{command_prefix}hello"):
+        if command == f"{command_prefix}hello":
             await self.command_hello(message)
 
     async def command_chat(self, message):
