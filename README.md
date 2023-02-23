@@ -10,17 +10,16 @@ Discordのbotを操作することができるpythonのAPI「discord.py」でぼ
 
 # Requirement
 
+* poetry
 * Python 3.8.10
-    * discord.py
 
 # Installation
 
 ```bash
-$ sudo pip3 install discord.py
+$ poetry install
 ```
 
 # Note
-
 
 * python,gitのお勉強用のプロジェクト。
 * できるだけ便利なぼっとを作りたい。
