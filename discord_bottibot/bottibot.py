@@ -3,21 +3,70 @@ import asyncio
 import traceback
 from enum import Enum
 import openai
+import datetime
+from logger import Logger
 
 
-class BottiClient(discord.Client):
+TAG = "[Bott]"
+
+def log_e(log):
+    Logger.log_e(f"{self.TAG} {log}")
+
+
+def log_i(log):
+    Logger.log_i(f"{TAG} {log}")
+
+
+def log_d(log):
+    Logger.log_d(f"{TAG} {log}")
+
+
+class BottiBot(discord.Client):
+    def log_command(self, command, args, user):
+        log_i(f"{user} executing {command} {' '.join(args)}")
+
     # 起動時
     async def on_ready(self):
-        print("じゅんびかんりょー")
+        log_i("--------------------")
+        log_i(f"bottibot user: {self.user.name}")
+        log_i(f"bottibot id  : {self.user.id}")
+        log_i("--------------------")
+        log_i("Ready bottibot!")
 
     # メッセージ受信時
     async def on_message(self, message):
-        if message.author.bot:
+        author = message.author
+        content = message.content
+        embeds = message.embeds
+        embeds_desc = [embed.description for embed in message.embeds]
+        log_i(f"user:{author} comments:{content} embeds:{','.join([embed.description for embed in embeds])}")
+        if author.bot:
             return
-        if message.content.startswith("!chat"): # ぼっととの会話用分岐
-            prompt = message.content[5:]
-            response_text = await self.generate_text(prompt)
-            await message.channel.send(response_text)
+        command = content.split(' ')[0]
+        command_prefix = "!"
+        if content.startswith(f"{command_prefix}chat"):
+            await self.command_chat(message)
+            return
+        if content.startswith(f"{command_prefix}hello"):
+            await self.command_hello(message)
+
+    async def command_chat(self, message):
+        contents = message.content.split(' ')
+        if len(message.content.split(' ')) <= 1:
+            await message.channel.send("会話内容を入力してください!")
+            await message.channel.send("Format: !chat [会話内容]")
+            await message.channel.send("HowUse: !chat \"なんか おもしろい話して\"")
+            return
+        args = contents[1:]
+        self.log_command('chat', args, message.author)
+        prompt = ' '.join(args)
+        response_text = await self.generate_text(prompt)
+        await message.channel.send(response_text)
+
+    async def command_hello(self, message):
+        args = message.content.split(' ')[1:]
+        self.log_command('hello', args, message.author)
+        await message.channel.send('Hello!')
 
     # リアクション追加時に実行されるイベントハンドラ
     async def on_reaction_add(self, reaction, user):
@@ -39,48 +88,48 @@ class BottiClient(discord.Client):
             state = State.MOVE
         else:   
             state = State.OTHER
-        print(before)
-        print(after)
-        print(member)
-        print(state)
+        log_d(f"before: {before}")
+        log_d(f"after: {after}")
+        log_d(f"member: {member}")
+        log_d(f"state: {state}")
 
         BOT_NOTIFY_CH_NAME = "bot_notify"
-        if state is State.JOIN or state is State.MOVE:
+        if state == State.JOIN or state == State.MOVE:
             voice_channel_cate = after.channel.category
             notify_channels = list(filter(lambda ele: ele.name == BOT_NOTIFY_CH_NAME ,voice_channel_cate.channels))
             if len(notify_channels) == 0:
-                print(f"{BOT_NOTIFY_CH_NAME}がなかったからつくるよ")
+                log_i(f"Create text ch {BOT_NOTIFY_CH_NAME}")
                 notify_channel = await voice_channel_cate.create_text_channel(BOT_NOTIFY_CH_NAME)
             else :
-                print(f"{BOT_NOTIFY_CH_NAME}がすでにあったよ")
                 notify_channel = notify_channels[0]
             if len(after.channel.members) == 1:
-                embed = discord.Embed(
+                embeds = []
+                embeds.append(discord.Embed(
                     color=0x0000ff, 
                     description=f"{member.name}がボイスチャットで話したがってるよ",
-                    )
-                await notify_channel.send(embed=embed)
+                    ))
+                await notify_channel.send(embeds=embeds)
             else:
-                embed = discord.Embed(
+                embeds = []
+                embeds.append(discord.Embed(
                     color=0x00ff00, 
                     description=f"{member.name}がボイスチャットに参加したよ",
-                    )
-                await notify_channel.send(embed=embed)
-    
+                    )) 
+                await notify_channel.send(embeds=embeds)
+
     # メッセージに対するOpenAIの返信を生成
-    async def generate_text(self, prompt):
-        print(prompt)
+    async def generate_text(self, message):
         model_engine = "text-davinci-002"
         completions = openai.Completion.create(
             engine=model_engine,
-            prompt=f"Question: {prompt} Answer:",
+            prompt=f"Question: {message} Answer:",
             max_tokens=1024,
             n=1,
             stop=None,
             temperature=0.5,
         )
-        message = completions.choices[0].text.strip()
-        return message
+        response = completions.choices[0].text.strip()
+        return response
 
 
 def setup(ctx):
@@ -88,8 +137,10 @@ def setup(ctx):
 
 
 def run(ctx):
+    log_i("Starting Bottibot")
     setup(ctx)
     intents = discord.Intents.default()
+    intents.members = True
     intents.message_content = True
-    client = BottiClient(intents=intents)
-    client.run(ctx.bot_token)
+    bottibot = BottiBot(intents=intents)
+    bottibot.run(ctx.bot_token)

@@ -2,6 +2,7 @@ from os import getenv
 from dotenv import load_dotenv
 import context
 import bottibot
+from logger import Logger
 
 
 def setup(ctx):
@@ -17,6 +18,7 @@ def setup(ctx):
     if openai_key is None:
         raise KeyError(f"{OPENAI_KEY} not defined.")
     ctx.openai_key = openai_key
+    Logger.setup()
 
 
 if __name__ == "__main__":
