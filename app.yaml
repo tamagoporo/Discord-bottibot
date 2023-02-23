@@ -1,1 +1,4 @@
 runtime: python38
+
+includes:
+- secret.yaml
