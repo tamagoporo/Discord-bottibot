@@ -1,16 +1,17 @@
 import discord
-import asyncio
 import traceback
 from enum import Enum
 import openai
-import datetime
 from logger import Logger
+from discord_cmnd_hello import Command_hello
+from discord_cmnd_chat import Command_chat
+from discord_cmnd_msche import Command_msche
 
 
 TAG = "[Bott]"
 
 def log_e(log):
-    Logger.log_e(f"{self.TAG} {log}")
+    Logger.log_e(f"{TAG} {log}")
 
 
 def log_i(log):
@@ -22,8 +23,11 @@ def log_d(log):
 
 
 class BottiBot(discord.Client):
-    def log_command(self, command, args, user):
-        log_i(f"{user} executing {command} {' '.join(args)}")
+    def __init__(self, intents) -> None:
+        super().__init__(intents=intents)
+    
+    def log_command(self, command, args, user, guild, channel):
+        log_i(f"{user} execute command {command} args:{args} at guild:{guild} channel:{channel}")
 
     # 起動時
     async def on_ready(self):
@@ -43,29 +47,21 @@ class BottiBot(discord.Client):
             return
         command = content.split(' ')[0]
         command_prefix = "!"
-        if command == f"{command_prefix}chat":
-            await self.command_chat(message)
-            return
+        # helloコマンド(試験用)
         if command == f"{command_prefix}hello":
-            await self.command_hello(message)
-
-    async def command_chat(self, message):
-        contents = message.content.split(' ')
-        if len(message.content.split(' ')) <= 1:
-            await message.channel.send("会話内容を入力してください!")
-            await message.channel.send("Format: !chat [会話内容]")
-            await message.channel.send("HowUse: !chat \"なんか おもしろい話して\"")
+            await Command_hello.command_hello(message)
             return
-        args = contents[1:]
-        self.log_command('chat', args, message.author)
-        prompt = ' '.join(args)
-        response_text = await self.generate_text(prompt)
-        await message.channel.send(response_text)
+        # chatコマンド
+        if command == f"{command_prefix}chat":
+            await Command_chat.command_chat(message)
+            return
+        # mscheコマンド
+        if command == f"{command_prefix}msche":
+            await Command_msche().command_msche(message)
+            return
 
-    async def command_hello(self, message):
-        args = message.content.split(' ')[1:]
-        self.log_command('hello', args, message.author)
-        await message.channel.send('Hello!')
+
+
 
     # リアクション追加時に実行されるイベントハンドラ
     async def on_reaction_add(self, reaction, user):
@@ -95,9 +91,9 @@ class BottiBot(discord.Client):
         BOT_NOTIFY_CH_NAME = "bot_notify"
         if state == State.JOIN or state == State.MOVE:
             voice_channel_cate = after.channel.category
-            notify_channels = list(filter(lambda ele: ele.name == BOT_NOTIFY_CH_NAME ,voice_channel_cate.channels))
+            notify_channels = [channel for channel in voice_channel_cate.channels if channel.name == BOT_NOTIFY_CH_NAME]
             if len(notify_channels) == 0:
-                log_i(f"Create text ch {BOT_NOTIFY_CH_NAME}")
+                log_i(f"Create notify text ch {BOT_NOTIFY_CH_NAME} in {notify_channel.guild}")
                 notify_channel = await voice_channel_cate.create_text_channel(BOT_NOTIFY_CH_NAME)
             else :
                 notify_channel = notify_channels[0]
@@ -116,19 +112,22 @@ class BottiBot(discord.Client):
                     )) 
                 await notify_channel.send(embeds=embeds)
 
-    # メッセージに対するOpenAIの返信を生成
-    async def generate_text(self, message):
-        model_engine = "text-davinci-002"
-        completions = openai.Completion.create(
-            engine=model_engine,
-            prompt=f"Question: {message} Answer:",
-            max_tokens=1024,
-            n=1,
-            stop=None,
-            temperature=0.5,
-        )
-        response = completions.choices[0].text.strip()
-        return response
+    async def get_bottibot_notify_channel(self, guild):
+        BOT_NOTIFY_CATE_NAME = "bottibot"
+        BOT_NOTIFY_CH_NAME = "bot_notify"
+        bottibot_categorys = [cate for cate in guild.categories if cate.name == BOT_NOTIFY_CATE_NAME]
+        if len(bottibot_categorys) == 0:
+            log_i(f"Create bottibot cate {BOT_NOTIFY_CATE_NAME} in {guild}")
+            cate = await guild.create_category(BOT_NOTIFY_CATE_NAME)
+        else:
+            cate = bottibot_categorys[0]
+        notify_channels = [channel for channel in cate.channels if channel.name == BOT_NOTIFY_CH_NAME]
+        if len(notify_channels) == 0:
+            log_i(f"Create bottibot notify text ch {BOT_NOTIFY_CH_NAME} in {guild}")
+            ch = await cate.create_text_channel(BOT_NOTIFY_CH_NAME)
+        else:
+            ch = notify_channels[0]
+        return ch
 
 
 def setup(ctx):
