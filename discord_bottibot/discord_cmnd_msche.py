@@ -2,6 +2,7 @@ import discord
 import asyncio
 import datetime
 import uuid
+from bottibot_general import BottibotGeneral
 from logger import Logger
 from enum import Enum
 
@@ -20,12 +21,12 @@ def log_d(log):
 
 
 class ScheduleMessage(object):
-    def __init__(self, author, datetime, guild, message, files) -> None:
+    def __init__(self, author, datetime, guild, message, attachments) -> None:
         self.author = author
         self.send_datetime = datetime
         self.send_guild = guild
         self.send_message = message
-        self.send_files = files
+        self.send_attachments = attachments
 
 
 class Action(Enum):
@@ -103,8 +104,12 @@ class Command_msche(object):
         if diff < 0:
             await dm_channel.send(f"現在時刻よりも未来の時刻を指定してください。")
             return None
-        guilds_index = int(args[3])
-        if guilds_index >= len(message.author.mutual_guilds):
+        try:
+            guilds_index = int(args[3])
+        except ValueError:
+            await dm_channel.send(f"送信可能サーバ には一覧の数値を入力してください。")
+            return None
+        if guilds_index < 0 or (len(message.author.mutual_guilds) - 1) < guilds_index:
             await dm_channel.send(f"送信可能サーバ 一覧の範囲外です。")
             return None
         send_guild = message.author.mutual_guilds[guilds_index]
@@ -113,7 +118,7 @@ class Command_msche(object):
                 await dm_channel.send(f"メッセージもしくは添付ファイルを指定してください。")
                 return None
             return (Action.SEND, send_datetime, send_guild, None)
-        return (Action.SEND, send_datetime, send_guild, args[4])
+        return (Action.SEND, send_datetime, send_guild, ' '.join(args[4:]))
 
     @classmethod
     async def _parse_msche_remove_format(self, dm_channel, args):
@@ -125,8 +130,7 @@ class Command_msche(object):
     @classmethod
     async def _msche_send(self, send_datetime, send_guild, send_message, message, dm_channel):
         id = str(uuid.uuid4())
-        send_files = [await attachment.to_file() for attachment in message.attachments]
-        schedule_message = ScheduleMessage(message.author, send_datetime, send_guild, send_message, send_files)
+        schedule_message = ScheduleMessage(message.author, send_datetime, send_guild, send_message, message.attachments)
         self._message_schedule[id] = schedule_message
         success_response = "メッセージの送信予約に成功しました。\n"
         success_response += f"送信予約メッセージID: {id}"
@@ -146,8 +150,9 @@ class Command_msche(object):
             author = schedule_message.author
             send_guild = schedule_message.send_guild
             send_message = schedule_message.send_message
-            send_files = schedule_message.send_files
-            send_channel = await self.get_bottibot_notify_channel(send_guild)
+            send_attachments = schedule_message.send_attachments
+            send_files = [attachment.to_file() for attachment in send_attachments]
+            send_channel = await BottibotGeneral.get_bottibot_notify_channel(send_guild)
             await send_channel.send(f"Author:{author.name} {send_message}", files=send_files)
             self._message_schedule.pop(id)
 
@@ -160,13 +165,14 @@ class Command_msche(object):
             send_datetime = value.send_datetime
             send_guild = value.send_guild
             send_message = value.send_message
-            send_files = value.send_files
+            send_attachments = value.send_attachments
+            send_files = [await attachment.to_file() for attachment in send_attachments]
             response = f"送信予約メッセージID: {key}\n"
             response += f"送信予約日程: {send_datetime}\n"
             response += f"送信先サーバ: {send_guild}\n"
             response += f"送信メッセージ: {send_message}\n"
             response += f"送信ファイル:\n"
-            await dm_channel.send(response, files=send_files)
+            await dm_channel.send(response, files=[file for file in send_files])
 
     @classmethod
     async def _msche_remove(self, author, dm_channel, remove_ids):
@@ -194,13 +200,11 @@ class Command_msche(object):
         else:
             dm_channel = message.author.dm_channel
         await self._help_command_msche(message.author, dm_channel)
-    
+
     @classmethod
     async def _help_command_msche(self, author, dm_channel):
         guilds = author.mutual_guilds
-        response = "送信可能サーバ 一覧：\n"
-        for index, guild in enumerate(guilds):
-            response += f"[{index}] {guild}\n"
+        response = "メッセージ送信予約をぼっちぼっとで管理します。\n"
         response += "!msche send [送信日時(yyyy-mm-dd hh:mm:ss)] [送信サーバ(0～)] [送信メッセージ]\n"
         response += " - メッセージを送信予約します。\n"
         response += "!msche list\n"
@@ -209,6 +213,9 @@ class Command_msche(object):
         response += " - 指定された送信予約を取り消します。\n"
         response += "!msche clear\n"
         response += " - 送信予約をすべて取り消します。\n"
+        response += "送信可能サーバ 一覧：\n"
+        for index, guild in enumerate(guilds):
+            response += f"[{index}] {guild}\n"
         response += "※ mscheコマンドはDMチャンネルで実行してください。\n"
         response += "※ また、送信可能サーバ 一覧はサーバの入退室によって変動する可能性があります。\n"
         await dm_channel.send(response)
@@ -222,11 +229,11 @@ class Command_msche(object):
             response += f"[{index}] {guild}\n"
         response += "Format: !msche send [送信日時(yyyy-mm-dd hh:mm:ss)] [送信サーバ(0～)] [送信メッセージ]\n"
         response += "Example: !msche send 2023-04-01 07:00:00 0 おはようございます\n"
-        response += "また、ファイル(画像など)も一緒に添付することで送信可能です。\n"
+        response += "また、画像などのファイル(8MBまで)も一緒に添付することで送信可能です。\n"
         response += "※ mscheコマンドはDMチャンネルで実行してください。\n"
         response += "※ また、送信可能サーバ 一覧はサーバの入退室によって変動する可能性があります。\n"
         await dm_channel.send(response)
-        
+
     @classmethod
     async def _help_command_msche_remove(self, dm_channel):
         response = "指定された送信予約を取り消します。\n"
