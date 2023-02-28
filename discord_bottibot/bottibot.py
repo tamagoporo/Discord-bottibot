@@ -2,6 +2,8 @@ import discord
 import traceback
 from enum import Enum
 import openai
+import time
+import datetime
 from logger import Logger
 from discord_cmnd_hello import Command_hello
 from discord_cmnd_chat import Command_chat
@@ -45,23 +47,9 @@ class BottiBot(discord.Client):
         log_i(f"user:{author} comments:{content} embeds:{','.join([embed.description for embed in embeds])}")
         if author.bot:
             return
-        command = content.split(' ')[0]
         command_prefix = "!"
-        # helloコマンド(試験用)
-        if command == f"{command_prefix}hello":
-            await Command_hello.command_hello(message)
-            return
-        # chatコマンド
-        if command == f"{command_prefix}chat":
-            await Command_chat.command_chat(message)
-            return
-        # mscheコマンド
-        if command == f"{command_prefix}msche":
-            await Command_msche().command_msche(message)
-            return
-
-
-
+        if content.startswith(command_prefix):
+            await Command.command_process(message, command_prefix)
 
     # リアクション追加時に実行されるイベントハンドラ
     async def on_reaction_add(self, reaction, user):
@@ -111,6 +99,50 @@ class BottiBot(discord.Client):
                     description=f"{member.name}がボイスチャットに参加したよ",
                     )) 
                 await notify_channel.send(embeds=embeds)
+
+
+class Command(object):
+    _last_execution_history = {}
+    
+    # 各コマンド処理
+    @classmethod
+    async def command_process(self, message, command_prefix):
+        if not (await self._chk_execution_duration(message)):
+            return
+        self._update_execution_history(message.author)
+        content = message.content
+        command = content.split(' ')[0]
+        # helloコマンド(試験用)
+        if command == f"{command_prefix}hello":
+            await Command_hello.command_hello(message)
+            return
+        # chatコマンド
+        if command == f"{command_prefix}chat":
+            await Command_chat.command_chat(message)
+            return
+        # mscheコマンド
+        if command == f"{command_prefix}msche":
+            await Command_msche().command_msche(message)
+            return
+
+    @classmethod
+    async def _chk_execution_duration(self, message):
+        LIMIT = 5
+        author = message.author
+        channel = message.channel
+        if not author in self._last_execution_history:
+            return True
+        last_execute_datetime = self._last_execution_history[author]
+        duration = (datetime.datetime.now() - last_execute_datetime).total_seconds()
+        print(duration)
+        if duration < LIMIT:
+            await channel.send(f"コマンドは{LIMIT}秒空けてから実行してください")
+            return False
+        return True
+
+    @classmethod
+    def _update_execution_history(self, author):
+        self._last_execution_history[author] = datetime.datetime.now()
 
 
 def setup(ctx):
