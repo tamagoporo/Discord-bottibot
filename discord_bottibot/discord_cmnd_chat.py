@@ -1,3 +1,4 @@
+from discord_cmnd_executable import CommandExecutable
 import openai
 from logger import Logger
 
@@ -16,7 +17,7 @@ def log_d(log):
     Logger.log_d(f"{TAG} {log}")
 
 
-class Command_chat(object):
+class CommandChat(object):
     # chatコマンド
     @classmethod
     async def command_chat(self, message):
@@ -31,6 +32,8 @@ class Command_chat(object):
         prompt = ' '.join(args)
         response_text = await self._generate_text(prompt)
         await message.channel.send(response_text)
+        author = message.author
+        CommandExecutable.command_task_done(author)
 
 
     # メッセージに対するOpenAIの返信を生成

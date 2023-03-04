@@ -5,9 +5,10 @@ import openai
 import time
 import datetime
 from logger import Logger
-from discord_cmnd_hello import Command_hello
-from discord_cmnd_chat import Command_chat
-from discord_cmnd_msche import Command_msche
+from discord_cmnd_hello import CommandHello
+from discord_cmnd_chat import CommandChat
+from discord_cmnd_msche import CommandMsche
+from discord_cmnd_executable import CommandExecutable
 
 
 TAG = "[Bott]"
@@ -102,47 +103,33 @@ class BottiBot(discord.Client):
 
 
 class Command(object):
-    _last_execution_history = {}
-    
     # 各コマンド処理
     @classmethod
-    async def command_process(self, message, command_prefix):
-        if not (await self._chk_execution_duration(message)):
-            return
-        self._update_execution_history(message.author)
-        content = message.content
-        command = content.split(' ')[0]
-        # helloコマンド(試験用)
-        if command == f"{command_prefix}hello":
-            await Command_hello.command_hello(message)
-            return
-        # chatコマンド
-        if command == f"{command_prefix}chat":
-            await Command_chat.command_chat(message)
-            return
-        # mscheコマンド
-        if command == f"{command_prefix}msche":
-            await Command_msche().command_msche(message)
-            return
-
-    @classmethod
-    async def _chk_execution_duration(self, message):
-        LIMIT = 5
+    async def command_process(cls, message, command_prefix):
         author = message.author
-        channel = message.channel
-        if not author in self._last_execution_history:
-            return True
-        last_execute_datetime = self._last_execution_history[author]
-        duration = (datetime.datetime.now() - last_execute_datetime).total_seconds()
-        print(duration)
-        if duration < LIMIT:
-            await channel.send(f"コマンドは{LIMIT}秒空けてから実行してください")
-            return False
-        return True
-
-    @classmethod
-    def _update_execution_history(self, author):
-        self._last_execution_history[author] = datetime.datetime.now()
+        content = message.content
+        if not CommandExecutable.chk_command_executable(author):
+            command_failed_message = "別コマンド実行中のため、処理できませんでした。\n"
+            command_failed_message += f"失敗コマンド：{content}"
+            await message.channel.send(command_failed_message)
+            return
+        CommandExecutable.command_task_start(author)
+        try:
+            command = content.split(' ')[0]
+            # helloコマンド(試験用)
+            if command == f"{command_prefix}hello":
+                await CommandHello.command_hello(message)
+                return
+            # chatコマンド
+            if command == f"{command_prefix}chat":
+                await CommandChat.command_chat(message)
+                return
+            # mscheコマンド
+            if command == f"{command_prefix}msche":
+                await CommandMsche().command_msche(message)
+                return
+        finally:
+            CommandExecutable.command_task_done(author)
 
 
 def setup(ctx):

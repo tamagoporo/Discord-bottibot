@@ -1,4 +1,5 @@
 from logger import Logger
+from discord_cmnd_executable import CommandExecutable
 
 
 TAG = "[gree]"
@@ -14,10 +15,12 @@ def log_i(log):
 def log_d(log):
     Logger.log_d(f"{TAG} {log}")
 
-class Command_hello(object):
+class CommandHello(object):
     # helloコマンド
     @classmethod
     async def command_hello(self, message):
         args = message.content.split(' ')[1:]
         self.log_command('hello', args, message.author, message.guild, message.channel)
         await message.channel.send('Hello!')
+        author = message.author
+        CommandExecutable.command_task_done(author)
