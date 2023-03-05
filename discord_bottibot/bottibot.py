@@ -87,11 +87,11 @@ class BottiBot(discord.Client):
                 notify_channel = notify_channels[0]
             if len(after.channel.members) == 1:
                 embeds = []
-                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットで話したがってるよ"), EmbedType.INFO1)
+                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットで話したがってるよ", EmbedType.INFO1))
                 await notify_channel.send(embeds=embeds)
             else:
                 embeds = []
-                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットに参加したよ"), EmbedType.INFO2)
+                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットに参加したよ", EmbedType.INFO2))
                 await notify_channel.send(embeds=embeds)
 
 
