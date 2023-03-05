@@ -3,6 +3,7 @@ import asyncio
 import datetime
 import uuid
 from bottibot_general import BottibotGeneral
+from bottibot_general import EmbedType
 from discord_cmnd_executable import CommandExecutable
 from logger import Logger
 from enum import Enum
@@ -50,18 +51,18 @@ class CommandMsche(object):
     
     # mscheコマンド
     @classmethod
-    async def command_msche(cls, message):
-        args = message.content.split(' ')[1:]
+    async def command_msche(cls, client, message):
+        args = message.content.split(' ')[1:] # !mscheを除いた後の引数部分
         cls._log_command(args, message.author, message.guild, message.channel)
         if type(message.channel) == discord.DMChannel:
-            await cls._dm_command_msche(message, args)
+            await cls._dm_command_msche(client, message, args)
         else:
             await cls._other_command_msche(message)
             author = message.author
             CommandExecutable.command_task_done(author)
 
     @classmethod
-    async def _dm_command_msche(cls, message, args):
+    async def _dm_command_msche(cls, client, message, args):
         dm_channel = message.channel
         author = message.author
         result = await cls._parse_msche_format(dm_channel, message, args)
@@ -70,11 +71,11 @@ class CommandMsche(object):
             return
         action = result[0]
         if action == Action.SEND:
-            await cls._msche_send(result[1], result[2], result[3], message, dm_channel)
+            await cls._msche_send(result[1], result[2], result[3], client, message, dm_channel)
         if action == Action.LIST:
-            await cls._msche_list(author, dm_channel)
+            await cls._msche_list(result[1], author, dm_channel)
         if action == Action.REMOVE:
-            await cls._msche_remove(author, dm_channel, result[1])
+            await cls._msche_remove(result[1],author, dm_channel,)
         if action == Action.CLEAR:
             await cls._msche_clear(author, dm_channel)
     
@@ -87,7 +88,7 @@ class CommandMsche(object):
         if action == "send":
             return await cls._parse_msche_send_format(dm_channel, message, args)
         if action == "list":
-            return (Action.LIST,)
+            return await cls._parse_msche_list_format(args)
         if action == "remove":
             return await cls._parse_msche_remove_format(dm_channel, args)
         if action == "clear":
@@ -126,6 +127,16 @@ class CommandMsche(object):
         return (Action.SEND, send_datetime, send_guild, ' '.join(args[4:]))
 
     @classmethod
+    async def _parse_msche_list_format(cls, args):
+        with_files = False
+        if len(args) <= 1:
+            return (Action.LIST, with_files)
+        for arg in args[1:]:
+            if arg == "--with-files" or arg == "--withfiles":
+                with_files = True
+        return (Action.LIST, with_files)
+
+    @classmethod
     async def _parse_msche_remove_format(cls, dm_channel, args):
         if len(args) <= 1:
             await cls._help_command_msche_remove(dm_channel)
@@ -133,7 +144,7 @@ class CommandMsche(object):
         return (Action.REMOVE, args[1:])
 
     @classmethod
-    async def _msche_send(cls, send_datetime, send_guild, send_message, message, dm_channel):
+    async def _msche_send(cls, send_datetime, send_guild, send_message, client, message, dm_channel):
         author = message.author
         if len([schedule_message for schedule_message in cls._message_schedule.values() if schedule_message.author == author]) >= 10:
             await dm_channel.send("メッセージ送信予約数が既に10件存在しているため、送信予約できませんでした。")
@@ -146,10 +157,10 @@ class CommandMsche(object):
         success_response += f"送信予約メッセージID: {id}"
         await dm_channel.send(success_response)
         CommandExecutable.command_task_done(author)
-        await cls._chk_message_schedule(id)
+        await cls._chk_message_schedule(client, id)
 
     @classmethod
-    async def _chk_message_schedule(cls, id):
+    async def _chk_message_schedule(cls, client, id):
         while id in cls._message_schedule:
             await asyncio.sleep(1)
             schedule_message = cls._message_schedule.get(id)
@@ -159,16 +170,19 @@ class CommandMsche(object):
             if datetime.datetime.now() < send_datetime:
                 continue
             author = schedule_message.author
-            send_guild = schedule_message.send_guild
             send_message = schedule_message.send_message
-            send_attachments = schedule_message.send_attachments
-            send_files = [attachment.to_file() for attachment in send_attachments]
+            send_guild = schedule_message.send_guild
             send_channel = await BottibotGeneral.get_bottibot_notify_channel(send_guild)
-            await send_channel.send(f"Author:{author.name} {send_message}", files=send_files)
+            send_attachments = schedule_message.send_attachments
+            send_files = [await attachment.to_file() for attachment in send_attachments]
+            if send_message:
+                await send_channel.send(content=send_message, embed=BottibotGeneral.create_embed(client, author, f"↑{author.name}さんからの予約メッセージ↑", EmbedType.INFO1))
+            if len(send_files) != 0:
+                await send_channel.send(files=send_files, embed=BottibotGeneral.create_embed(client, author, f"↑{author.name}さんからの予約添付ファイル↑", EmbedType.INFO1))
             cls._message_schedule.pop(id)
 
     @classmethod
-    async def _msche_list(cls, author, dm_channel):
+    async def _msche_list(cls, with_files, author, dm_channel):
         await dm_channel.send("送信予約メッセージ一覧：")
         for key, value in cls._message_schedule.items():
             if value.author != author:
@@ -176,18 +190,21 @@ class CommandMsche(object):
             send_datetime = value.send_datetime
             send_guild = value.send_guild
             send_message = value.send_message
-            send_attachments = value.send_attachments
-            send_files = [await attachment.to_file() for attachment in send_attachments]
             response = f"送信予約メッセージID: {key}\n"
             response += f"送信予約日程: {send_datetime}\n"
             response += f"送信先サーバ: {send_guild}\n"
             response += f"送信メッセージ: {send_message}\n"
-            response += f"送信ファイル:\n"
-            await dm_channel.send(response, files=[file for file in send_files])
+            send_files = []
+            if with_files:
+                send_attachments = value.send_attachments
+                for attachment in send_attachments:
+                    send_files.append(await attachment.to_file())
+                response += f"送信ファイル:\n"
+            await dm_channel.send(response, files=send_files)
         CommandExecutable.command_task_done(author)
 
     @classmethod
-    async def _msche_remove(cls, author, dm_channel, remove_ids):
+    async def _msche_remove(cls, remove_ids, author, dm_channel):
         ids = [key for key, value in cls._message_schedule.items() if value.author == author]
         for remove_id in remove_ids:
             if not remove_id in ids:
@@ -223,8 +240,9 @@ class CommandMsche(object):
         response = "メッセージ送信予約をぼっちぼっとで管理します。\n"
         response += "!msche send [送信日時(yyyy-mm-dd hh:mm:ss)] [送信サーバ(0～)] [送信メッセージ]\n"
         response += " - メッセージを送信予約します。\n"
-        response += "!msche list\n"
+        response += "!msche list ([--with-files])\n"
         response += " - 送信予約メッセージの一覧を表示します。\n"
+        response += "   --with-filesオプションを付けた場合は添付ファイルも一緒に表示します。\n"
         response += "!msche remove [送信予約メッセージID]\n"
         response += " - 指定された送信予約を取り消します。\n"
         response += "!msche clear\n"

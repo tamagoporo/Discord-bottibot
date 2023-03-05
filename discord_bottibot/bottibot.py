@@ -9,6 +9,8 @@ from discord_cmnd_hello import CommandHello
 from discord_cmnd_chat import CommandChat
 from discord_cmnd_msche import CommandMsche
 from discord_cmnd_executable import CommandExecutable
+from bottibot_general import BottibotGeneral
+from bottibot_general import EmbedType
 
 
 TAG = "[Bott]"
@@ -45,12 +47,12 @@ class BottiBot(discord.Client):
         author = message.author
         content = message.content
         embeds = message.embeds
-        log_i(f"user:{author} comments:{content} embeds:{','.join([embed.description for embed in embeds])}")
+        log_i(f"user:{author} comments:{content} embeds:{','.join([embed.title for embed in embeds if embed.title])}")
         if author.bot:
             return
         command_prefix = "!"
         if content.startswith(command_prefix):
-            await Command.command_process(message, command_prefix)
+            await Command.command_process(self, message, command_prefix)
 
     # リアクション追加時に実行されるイベントハンドラ
     async def on_reaction_add(self, reaction, user):
@@ -88,24 +90,18 @@ class BottiBot(discord.Client):
                 notify_channel = notify_channels[0]
             if len(after.channel.members) == 1:
                 embeds = []
-                embeds.append(discord.Embed(
-                    color=0x0000ff, 
-                    description=f"{member.name}がボイスチャットで話したがってるよ",
-                    ))
+                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットで話したがってるよ"), EmbedType.INFO1)
                 await notify_channel.send(embeds=embeds)
             else:
                 embeds = []
-                embeds.append(discord.Embed(
-                    color=0x00ff00, 
-                    description=f"{member.name}がボイスチャットに参加したよ",
-                    )) 
+                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットに参加したよ"), EmbedType.INFO2)
                 await notify_channel.send(embeds=embeds)
 
 
 class Command(object):
     # 各コマンド処理
     @classmethod
-    async def command_process(cls, message, command_prefix):
+    async def command_process(cls, client, message, command_prefix):
         author = message.author
         content = message.content
         if not CommandExecutable.chk_command_executable(author):
@@ -126,8 +122,9 @@ class Command(object):
                 return
             # mscheコマンド
             if command == f"{command_prefix}msche":
-                await CommandMsche().command_msche(message)
+                await CommandMsche().command_msche(client, message)
                 return
+            # TODO: Helpコマンド
         finally:
             CommandExecutable.command_task_done(author)
 
