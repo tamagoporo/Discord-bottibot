@@ -8,7 +8,7 @@ from logger import Logger
 from discord_cmnd_hello import CommandHello
 from discord_cmnd_chat import CommandChat
 from discord_cmnd_msche import CommandMsche
-from discord_cmnd_executable import CommandExecutable
+from executable_manager import ExecutableManager
 from bottibot_general import BottibotGeneral
 from bottibot_general import EmbedType
 
@@ -31,9 +31,6 @@ class BottiBot(discord.Client):
     def __init__(self, intents) -> None:
         super().__init__(intents=intents)
     
-    def log_command(self, command, args, user, guild, channel):
-        log_i(f"{user} execute command {command} args:{args} at guild:{guild} channel:{channel}")
-
     # 起動時
     async def on_ready(self):
         log_i("--------------------")
@@ -104,12 +101,12 @@ class Command(object):
     async def command_process(cls, client, message, command_prefix):
         author = message.author
         content = message.content
-        if not CommandExecutable.chk_command_executable(author):
+        if not ExecutableManager.chk_executable(author):
             command_failed_message = "別コマンド実行中のため、処理できませんでした。\n"
             command_failed_message += f"失敗コマンド：{content}"
             await message.channel.send(command_failed_message)
             return
-        CommandExecutable.command_task_start(author)
+        ExecutableManager.task_start(author)
         try:
             command = content.split(' ')[0]
             # helloコマンド(試験用)
@@ -126,7 +123,7 @@ class Command(object):
                 return
             # TODO: Helpコマンド
         finally:
-            CommandExecutable.command_task_done(author)
+            ExecutableManager.task_done(author)
 
 
 def setup(ctx):

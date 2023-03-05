@@ -4,7 +4,7 @@ import datetime
 import uuid
 from bottibot_general import BottibotGeneral
 from bottibot_general import EmbedType
-from discord_cmnd_executable import CommandExecutable
+from executable_manager import ExecutableManager
 from logger import Logger
 from enum import Enum
 
@@ -45,21 +45,17 @@ class CommandMsche(object):
     CMND = "msche"
     _message_schedule = {}
     
-    @classmethod
-    def _log_command(cls, args, user, guild, channel):
-        log_i(f"{user} execute command {cls.CMND} args:{args} at guild:{guild} channel:{channel}")
-    
     # mscheコマンド
     @classmethod
     async def command_msche(cls, client, message):
         args = message.content.split(' ')[1:] # !mscheを除いた後の引数部分
-        cls._log_command(args, message.author, message.guild, message.channel)
+        BottibotGeneral.log_command(cls.CMND, args, message.author, message.guild, message.channel)
         if type(message.channel) == discord.DMChannel:
             await cls._dm_command_msche(client, message, args)
         else:
             await cls._other_command_msche(message)
             author = message.author
-            CommandExecutable.command_task_done(author)
+            ExecutableManager.task_done(author)
 
     @classmethod
     async def _dm_command_msche(cls, client, message, args):
@@ -67,7 +63,7 @@ class CommandMsche(object):
         author = message.author
         result = await cls._parse_msche_format(dm_channel, message, args)
         if not result:
-            CommandExecutable.command_task_done(author)
+            ExecutableManager.task_done(author)
             return
         action = result[0]
         if action == Action.SEND:
@@ -148,7 +144,7 @@ class CommandMsche(object):
         author = message.author
         if len([schedule_message for schedule_message in cls._message_schedule.values() if schedule_message.author == author]) >= 10:
             await dm_channel.send("メッセージ送信予約数が既に10件存在しているため、送信予約できませんでした。")
-            CommandExecutable.command_task_done(author)
+            ExecutableManager.task_done(author)
             return
         id = str(uuid.uuid4())
         schedule_message = ScheduleMessage(message.author, send_datetime, send_guild, send_message, message.attachments)
@@ -156,7 +152,7 @@ class CommandMsche(object):
         success_response = "メッセージの送信予約に成功しました。\n"
         success_response += f"送信予約メッセージID: {id}"
         await dm_channel.send(success_response)
-        CommandExecutable.command_task_done(author)
+        ExecutableManager.task_done(author)
         await cls._chk_message_schedule(client, id)
 
     @classmethod
@@ -201,7 +197,7 @@ class CommandMsche(object):
                     send_files.append(await attachment.to_file())
                 response += f"送信ファイル:\n"
             await dm_channel.send(response, files=send_files)
-        CommandExecutable.command_task_done(author)
+        ExecutableManager.task_done(author)
 
     @classmethod
     async def _msche_remove(cls, remove_ids, author, dm_channel):
@@ -212,19 +208,19 @@ class CommandMsche(object):
                 continue
             cls._message_schedule.pop(remove_id)
             await dm_channel.send(f"削除に成功しました。 ID:{remove_id}")
-        CommandExecutable.command_task_done(author)
+        ExecutableManager.task_done(author)
 
     @classmethod
     async def _msche_clear(cls, author, dm_channel):
         ids = [key for key, value in cls._message_schedule.items() if value.author == author]
         if len(ids) == 0:
             await dm_channel.send(f"送信予約メッセージは存在しません。")
-            CommandExecutable.command_task_done(author)
+            ExecutableManager.task_done(author)
             return
         for id in ids:
             cls._message_schedule.pop(id)
             await dm_channel.send(f"削除に成功しました。 ID:{id}")
-        CommandExecutable.command_task_done(author)
+        ExecutableManager.task_done(author)
 
     @classmethod
     async def _other_command_msche(cls, message):
@@ -240,7 +236,7 @@ class CommandMsche(object):
         response = "メッセージ送信予約をぼっちぼっとで管理します。\n"
         response += "!msche send [送信日時(yyyy-mm-dd hh:mm:ss)] [送信サーバ(0～)] [送信メッセージ]\n"
         response += " - メッセージを送信予約します。\n"
-        response += "!msche list ([--with-files])\n"
+        response += "!msche list (--with-files)\n"
         response += " - 送信予約メッセージの一覧を表示します。\n"
         response += "   --with-filesオプションを付けた場合は添付ファイルも一緒に表示します。\n"
         response += "!msche remove [送信予約メッセージID]\n"

@@ -1,5 +1,6 @@
 from logger import Logger
-from discord_cmnd_executable import CommandExecutable
+from executable_manager import ExecutableManager
+from bottibot_general import BottibotGeneral
 
 
 TAG = "[gree]"
@@ -16,11 +17,14 @@ def log_d(log):
     Logger.log_d(f"{TAG} {log}")
 
 class CommandHello(object):
+    
+    CMND = 'hello'
+    
     # helloコマンド
     @classmethod
-    async def command_hello(self, message):
+    async def command_hello(cls, message):
         args = message.content.split(' ')[1:]
-        self.log_command('hello', args, message.author, message.guild, message.channel)
+        BottibotGeneral.log_command(cls.CMND, args, message.author, message.guild, message.channel)
         await message.channel.send('Hello!')
         author = message.author
-        CommandExecutable.command_task_done(author)
+        ExecutableManager.task_done(author)

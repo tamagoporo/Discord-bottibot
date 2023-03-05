@@ -27,8 +27,13 @@ class EmbedType(Enum):
 
 
 class BottibotGeneral(object):
-    @classmethod
-    async def get_bottibot_notify_channel(cls, guild):
+    
+    @staticmethod
+    def log_command(cmnd, args, user, guild, channel):
+        log_i(f"{user} execute command {cmnd} args:{args} at guild:{guild} channel:{channel}")
+    
+    @staticmethod
+    async def get_bottibot_notify_channel(guild):
         BOT_NOTIFY_CATE_NAME = "bottibot"
         BOT_NOTIFY_CH_NAME = "bot_notify"
         bottibot_categorys = [cate for cate in guild.categories if cate.name == BOT_NOTIFY_CATE_NAME]
@@ -45,8 +50,8 @@ class BottibotGeneral(object):
             ch = notify_channels[0]
         return ch
     
-    @classmethod
-    def create_embed(cls, client, author, message, embed_type=EmbedType.INFO1):
+    @staticmethod
+    def create_embed(client, author, message, embed_type=EmbedType.INFO1):
         if embed_type == EmbedType.INFO1:
             color = 0x0000ff # 青
         elif embed_type == EmbedType.INFO2:
