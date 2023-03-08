@@ -16,6 +16,7 @@ def log_i(log):
 def log_d(log):
     Logger.log_d(f"{TAG} {log}")
 
+
 class CommandHello(object):
     
     CMND = 'hello'

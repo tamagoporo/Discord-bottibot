@@ -8,6 +8,7 @@ from logger import Logger
 from discord_cmnd_hello import CommandHello
 from discord_cmnd_chat import CommandChat
 from discord_cmnd_msche import CommandMsche
+from discord_cmnd_help import CommandHelp
 from executable_manager import ExecutableManager
 from bottibot_general import BottibotGeneral
 from bottibot_general import EmbedType
@@ -121,7 +122,7 @@ class Command(object):
             if command == f"{command_prefix}msche":
                 await CommandMsche().command_msche(client, message)
                 return
-            # TODO: Helpコマンド
+            await CommandHelp().command_help(message)
         finally:
             ExecutableManager.task_done(author)
 
