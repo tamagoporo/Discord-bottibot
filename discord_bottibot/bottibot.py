@@ -1,16 +1,22 @@
 import discord
-import asyncio
 import traceback
 from enum import Enum
 import openai
+import time
 import datetime
 from logger import Logger
+from discord_cmnd_hello import CommandHello
+from discord_cmnd_chat import CommandChat
+from discord_cmnd_msche import CommandMsche
+from executable_manager import ExecutableManager
+from bottibot_general import BottibotGeneral
+from bottibot_general import EmbedType
 
 
 TAG = "[Bott]"
 
 def log_e(log):
-    Logger.log_e(f"{self.TAG} {log}")
+    Logger.log_e(f"{TAG} {log}")
 
 
 def log_i(log):
@@ -22,9 +28,9 @@ def log_d(log):
 
 
 class BottiBot(discord.Client):
-    def log_command(self, command, args, user):
-        log_i(f"{user} executing {command} {' '.join(args)}")
-
+    def __init__(self, intents) -> None:
+        super().__init__(intents=intents)
+    
     # 起動時
     async def on_ready(self):
         log_i("--------------------")
@@ -38,34 +44,12 @@ class BottiBot(discord.Client):
         author = message.author
         content = message.content
         embeds = message.embeds
-        log_i(f"user:{author} comments:{content} embeds:{','.join([embed.description for embed in embeds])}")
+        log_i(f"user:{author} comments:{content} embeds:{','.join([embed.title for embed in embeds if embed.title])}")
         if author.bot:
             return
-        command = content.split(' ')[0]
         command_prefix = "!"
-        if command == f"{command_prefix}chat":
-            await self.command_chat(message)
-            return
-        if command == f"{command_prefix}hello":
-            await self.command_hello(message)
-
-    async def command_chat(self, message):
-        contents = message.content.split(' ')
-        if len(message.content.split(' ')) <= 1:
-            await message.channel.send("会話内容を入力してください!")
-            await message.channel.send("Format: !chat [会話内容]")
-            await message.channel.send("HowUse: !chat \"なんか おもしろい話して\"")
-            return
-        args = contents[1:]
-        self.log_command('chat', args, message.author)
-        prompt = ' '.join(args)
-        response_text = await self.generate_text(prompt)
-        await message.channel.send(response_text)
-
-    async def command_hello(self, message):
-        args = message.content.split(' ')[1:]
-        self.log_command('hello', args, message.author)
-        await message.channel.send('Hello!')
+        if content.startswith(command_prefix):
+            await Command.command_process(self, message, command_prefix)
 
     # リアクション追加時に実行されるイベントハンドラ
     async def on_reaction_add(self, reaction, user):
@@ -95,40 +79,51 @@ class BottiBot(discord.Client):
         BOT_NOTIFY_CH_NAME = "bot_notify"
         if state == State.JOIN or state == State.MOVE:
             voice_channel_cate = after.channel.category
-            notify_channels = list(filter(lambda ele: ele.name == BOT_NOTIFY_CH_NAME ,voice_channel_cate.channels))
+            notify_channels = [channel for channel in voice_channel_cate.channels if channel.name == BOT_NOTIFY_CH_NAME]
             if len(notify_channels) == 0:
-                log_i(f"Create text ch {BOT_NOTIFY_CH_NAME}")
+                log_i(f"Create notify text ch {BOT_NOTIFY_CH_NAME} in {notify_channel.guild}")
                 notify_channel = await voice_channel_cate.create_text_channel(BOT_NOTIFY_CH_NAME)
             else :
                 notify_channel = notify_channels[0]
             if len(after.channel.members) == 1:
                 embeds = []
-                embeds.append(discord.Embed(
-                    color=0x0000ff, 
-                    description=f"{member.name}がボイスチャットで話したがってるよ",
-                    ))
+                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットで話したがってるよ", EmbedType.INFO1))
                 await notify_channel.send(embeds=embeds)
             else:
                 embeds = []
-                embeds.append(discord.Embed(
-                    color=0x00ff00, 
-                    description=f"{member.name}がボイスチャットに参加したよ",
-                    )) 
+                embeds.append(BottibotGeneral.create_embed(self, self.user, f"{member.name}がボイスチャットに参加したよ", EmbedType.INFO2))
                 await notify_channel.send(embeds=embeds)
 
-    # メッセージに対するOpenAIの返信を生成
-    async def generate_text(self, message):
-        model_engine = "text-davinci-002"
-        completions = openai.Completion.create(
-            engine=model_engine,
-            prompt=f"Question: {message} Answer:",
-            max_tokens=1024,
-            n=1,
-            stop=None,
-            temperature=0.5,
-        )
-        response = completions.choices[0].text.strip()
-        return response
+
+class Command(object):
+    # 各コマンド処理
+    @classmethod
+    async def command_process(cls, client, message, command_prefix):
+        author = message.author
+        content = message.content
+        if not ExecutableManager.chk_executable(author):
+            command_failed_message = "別コマンド実行中のため、処理できませんでした。\n"
+            command_failed_message += f"失敗コマンド：{content}"
+            await message.channel.send(command_failed_message)
+            return
+        ExecutableManager.task_start(author)
+        try:
+            command = content.split(' ')[0]
+            # helloコマンド(試験用)
+            if command == f"{command_prefix}hello":
+                await CommandHello.command_hello(message)
+                return
+            # chatコマンド
+            if command == f"{command_prefix}chat":
+                await CommandChat.command_chat(message)
+                return
+            # mscheコマンド
+            if command == f"{command_prefix}msche":
+                await CommandMsche().command_msche(client, message)
+                return
+            # TODO: Helpコマンド
+        finally:
+            ExecutableManager.task_done(author)
 
 
 def setup(ctx):

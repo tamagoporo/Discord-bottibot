@@ -17,7 +17,7 @@ class Logger(object):
     @classmethod
     def setup(self):
         
-        log_output_type = LogOutputType.GOOGLE
+        log_output_type = LogOutputType.STDOUT
 
         # ログファイル名を指定
         LOG_FILE = "./log/bottibot.log"
