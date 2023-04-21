@@ -21,6 +21,14 @@ def log_d(log):
 class CommandChat(object):
     
     CMND = 'chat'
+
+    BottiTeachingContents = [
+        "日本語で応答してください",
+        "一人称は「ぼく」に応答してください",
+        "コミュ障になったつもりで卑屈に会話してください。",
+        "ぼくなんて興味ないよねなどネガティブな言葉を基本的に使用してください"
+        "…を多様してコミュ障を演出してください",
+     ]
     
     # chatコマンド
     @classmethod
@@ -34,19 +42,34 @@ class CommandChat(object):
         args = contents[1:]
         BottibotGeneral.log_command(cls.CMND, args, message.author, message.guild, message.channel)
         prompt = ' '.join(args)
-        response_text = await cls._generate_text(prompt)
+        response_text = await cls._generate_text_ChatCompletion(prompt, cls.BottiTeachingContents)
         await message.channel.send(response_text)
         author = message.author
         ExecutableManager.task_done(author)
 
 
-    # メッセージに対するOpenAIの返信を生成
+    # メッセージに対するOpenAIの返信を生成(Endpointがhttps://api.openai.com/v1/chat/completions の形式)
     @classmethod
-    async def _generate_text(cls, message):
-        model_engine = "text-davinci-002"
+    async def _generate_text_ChatCompletion(cls, message, use_teaching_contents):
+        model = "gpt-3.5-turbo"
+        messages = [{"role": "system", "content": content} for content in use_teaching_contents]
+        messages.append({"role": "user", "content": message})
+        # messages += [{"role": "user", "content": content} for content in ]
+        completions = openai.ChatCompletion.create(
+            model=model,
+            messages=messages,
+        )
+        response = completions['choices'][0]['message']['content']
+        return response
+    
+    # メッセージに対するOpenAIの返信を生成(Endpointがhttps://api.openai.com/v1/completions の形式)
+    @classmethod
+    async def _generate_text_Completion(cls, message, use_teaching_content):
+        engine = "text-davinci-003"
+        prompt = f"System: 日本語で応答してください Question: {message} Answer:"
         completions = openai.Completion.create(
-            engine=model_engine,
-            prompt=f"Question: {message} Answer:",
+            engine=engine,
+            prompt=prompt,
             max_tokens=1024,
             n=1,
             stop=None,

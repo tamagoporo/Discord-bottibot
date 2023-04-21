@@ -10,7 +10,7 @@ packages = [{include = "discord_bottibot"}]
 [tool.poetry.dependencies]
 python = "^3.8"
 discord-py = "^2.1.1"
-openai = "^0.26.5"
+openai = "^0.27.0"
 python-dotenv = "^0.21.1"
 google-cloud-logging = "^3.5.0"
 google-cloud-storage = "^2.7.0"

@@ -71,7 +71,7 @@ class CommandMsche(object):
         if action == Action.LIST:
             await cls._msche_list(result[1], author, dm_channel)
         if action == Action.REMOVE:
-            await cls._msche_remove(result[1],author, dm_channel,)
+            await cls._msche_remove(result[1], author, dm_channel,)
         if action == Action.CLEAR:
             await cls._msche_clear(author, dm_channel)
     
