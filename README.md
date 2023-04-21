@@ -4,7 +4,7 @@ Discordのbotを操作することができるpythonのAPI「discord.py」でぼ
 
 ## DEMO
 
-![botti_demo](./botti_demo.png)
+<img src="./botti_demo.png" width="80%">
 
 ## Requirement
 
