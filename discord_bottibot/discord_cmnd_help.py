@@ -31,7 +31,7 @@ class CommandHelp(object):
         response += "!msche\n"
         response += " - メッセージを送信予約します。\n"
         response += "!chat\n"
-        response += " - OpenAIを使ったAIによる簡単な会話ができます。\n"
+        response += " - ぼっちぼっとと簡単な会話ができます。\n"
         response += "!hello\n"
         response += " - テスト用コマンド。\"Hello!\"と応答します。\n"
         response += "※ 詳しい使い方は各コマンドを実行して確認してください。"
