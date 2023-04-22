@@ -116,7 +116,7 @@ class Command(object):
                 return
             # chatコマンド
             if command == f"{command_prefix}chat":
-                await CommandChat.command_chat(message)
+                await CommandChat.command_chat(client, message)
                 return
             # mscheコマンド
             if command == f"{command_prefix}msche":
